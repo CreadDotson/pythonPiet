@@ -68,7 +68,7 @@ class pietInterpreter(object):
         self.DP += 1
         self.DP %= 4
 
-# takes two hex strings and gets the difference between them, executes the relevant function
+# takes two hex strings and gets the difference between them
     def get_change(self, first, second):
         startx = starty = endx = endy = 0
         for r in range(len(self.colors)):
@@ -85,10 +85,6 @@ class pietInterpreter(object):
         diffy = endy - starty
         print('function: ' + str(self.function_names[diffx][diffy]))
         return [diffx, diffy]
-        fun = self.functions[diffx][diffy]
-        if self.debug:
-            print(self.function_names[diffx][diffy])
-        fun()
 
 # checks if a coord is inside the image
     def isViable(self, testLoc):
@@ -151,8 +147,103 @@ class pietInterpreter(object):
 
 # takes the pointer, gets the image, cc, and dp, to get the next pointer
 # doesn't check for black blocks
-    def get_next_edge(self, current_pointer):
-        return None
+    def get_next_edge(self, current_pointer, codel):
+
+        def get_right_edge(codel):
+            edge = [codel[0]]
+            for coord in codel:
+                if coord[0] > edge[0][0]:
+                    edge = [coord]
+                if coord[0] == edge[0][0]:
+                    edge.append(coord)
+            return edge
+
+        def get_left_edge(codel):
+            edge = [codel[0]]
+            for coord in codel:
+                if coord[0] < edge[0][0]:
+                    edge = [coord]
+                if coord[0] == edge[0][0]:
+                    edge.append(coord)
+            return edge
+
+        def get_top_edge(codel):
+            edge = [codel[0]]
+            for coord in codel:
+                if coord[1] < edge[0][1]:
+                    edge = [coord]
+                if coord[1] == edge[0][1]:
+                    edge.append(coord)
+            return edge
+
+        def get_bottom_edge(codel):
+            edge = [codel[0]]
+            for coord in codel:
+                if coord[1] > edge[0][1]:
+                    edge = [coord]
+                if coord[1] == edge[0][1]:
+                    edge.append(coord)
+            return edge
+
+        def get_top(edge):
+            nxt = edge[0]
+            for coord in edge:
+                if coord[1] < nxt[1]:
+                    nxt = coord
+            return nxt
+
+        def get_bottom(edge):
+            nxt = edge[0]
+            for coord in edge:
+                if coord[1] > nxt[1]:
+                    nxt = coord
+            return nxt
+
+        def get_left(edge):
+            nxt = edge[0]
+            for coord in edge:
+                if coord[0] < nxt[0]:
+                    nxt = coord
+            return nxt
+
+        def get_right(edge):
+            nxt = edge[0]
+            for coord in edge:
+                if coord[0] > nxt[0]:
+                    nxt = coord
+            return nxt
+
+        #DP = 0  # 0-right, 1-down, 2-left, 3-up
+        #CC = True  # false = right, true = left
+
+        if not self.isViable(current_pointer):
+            return
+        # current_color = self.get_color(current_pointer)
+        if self.DP == 0:
+            edge = get_right_edge(codel)
+            if self.CC:
+                return get_top(edge)
+            else:
+                return get_bottom(edge)
+        elif self.DP == 1:
+            edge = get_bottom_edge(codel)
+            if self.CC:
+                return get_right(edge)
+            else:
+                return get_left(edge)
+        elif self.DP == 2:
+            edge = get_left_edge(codel)
+            if self.CC:
+                return get_bottom(edge)
+            else:
+                return get_top(edge)
+        elif self.DP == 3:
+            edge = get_top_edge(codel)
+            if self.CC:
+                return get_left(edge)
+            else:
+                return get_right(edge)
+        return
 
 # prints the coordinates in a grid to stdout
     def print_codel(self, codel):
@@ -168,8 +259,13 @@ class pietInterpreter(object):
     def start(self):
         counter = 8
         while counter > 0:
-            next_edge = self.get_next_edge(self.pointerLocation)
-            if not next_edge or self.get_color(next_edge) is self.black:
+            codel = self.get_codel(self.pointerLocation)
+            self.print_codel(codel)
+            next_edge = self.get_next_edge(self.pointerLocation, codel)
+            tst_dir = self.get_test_direction(self.DP)
+            if(not next_edge or
+            not self.isViable([next_edge[0] + tst_dir[0], next_edge[1] + tst_dir[1]]) or
+            self.get_color([next_edge[0] + tst_dir[0], next_edge[1] + tst_dir[1]]) is self.black):
                 if counter % 2 == 0:
                     self.CC = not self.CC
                 else:
@@ -178,11 +274,14 @@ class pietInterpreter(object):
                 print('DP: ' + str(self.DP))
                 counter -= 1
                 continue
-            self.get_change(self.get_color(self.pointerLocation), self.get_color(next_edge))
-            print(self.get_color(next_edge))
-            print(next_edge)
+            next_coord = [next_edge[0] + tst_dir[0], next_edge[1] + tst_dir[1]]
+            change = self.get_change(self.get_color(self.pointerLocation), self.get_color(next_coord))
+            fun = self.functions[change[0]][change[1]]
+            # execute the given function here
+            print(self.get_color(next_coord))
+            print(next_coord)
             print(counter)
-            self.pointerLocation = next_edge
+            self.pointerLocation = next_coord
             counter = 8
 
 
