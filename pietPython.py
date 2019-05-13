@@ -36,6 +36,7 @@ class pietInterpreter(object):
         self.DP %= 4
 
     def codel_toggle(self):
+        print('testing codel toggle')
         num = self.stack.view_top()
         while num > 0:
             self.CC = not self.CC
@@ -62,11 +63,30 @@ class pietInterpreter(object):
     def __init__(self, filename, debug=False):
         self.im = Image.open(filename)
         self.image = self.im.load()
+        self.rgb_im = self.im.convert('RGB')
+        # sys.stdout.write(str(self.im.size[0]) + '\n')
+        # sys.stdout.write(str(self.im.size[1]))
         self.debug = debug
 
     def pointer_toggle(self):
         self.DP += 1
         self.DP %= 4
+
+    def process_function(self, change, value):
+        # print('change')
+        # print(change)
+        if change == [0,1]:
+            self.stack.push(value)
+            # print(value)
+            return
+        if change == [3,1]:
+            self.pointer_toggle()
+            return
+        if change == [3,2]:
+            self.codel_toggle()
+            return
+        else:
+            self.functions[change[0]][change[1]]()
 
 # takes two hex strings and gets the difference between them
     def get_change(self, first, second):
@@ -79,11 +99,17 @@ class pietInterpreter(object):
                 if self.colors[r][c] == second:
                     endx = c
                     endy = r
-        print('endx: %d , endy: %d' % (endx, endy))
-        print('startx: %d , starty: %d' % (startx, starty))
+        if self.debug:
+            print('endx: %d , endy: %d' % (endx, endy))
+            print('startx: %d , starty: %d' % (startx, starty))
         diffx = endx - startx
         diffy = endy - starty
-        print('function: ' + str(self.function_names[diffx][diffy]))
+        if diffy < 0:
+            diffy = diffy + 3
+        if diffx < 0:
+            diffx = diffx + 6
+        if self.debug:
+            print('function: ' + str(self.function_names[diffx][diffy]))
         return [diffx, diffy]
 
 # checks if a coord is inside the image
@@ -100,10 +126,13 @@ class pietInterpreter(object):
 
 # returns the hex string color of the coordinate
     def get_color(self, coord):
-        rgb = self.image[coord[0], coord[1]]
-        if rgb == (0, 0, 0):
+        r, g, b = self.rgb_im.getpixel((coord[0], coord[1]))
+        if (r,g,b) == (0,0,0):
             return self.black
-        return self.convert(rgb)
+        if (r,g,b) == (255,255,255):
+            pass
+            # return self.white
+        return self.convert([r,g,b])
 
 # returns the direction of the DP
     def get_test_direction(self, DP):
@@ -248,19 +277,21 @@ class pietInterpreter(object):
 # prints the coordinates in a grid to stdout
     def print_codel(self, codel):
         sys.stdout.write('\n')
-        for x in range(self.im.size[0] - 1):
-            for y in range(self.im.size[1] + 1):
+        for x in range(self.im.size[1]):
+            for y in range(self.im.size[0]):
                 if [y, x] in codel:
                     sys.stdout.write('|88')
                 else:
                     sys.stdout.write('|__')
             sys.stdout.write('|\n')
 
+# main loop
     def start(self):
         counter = 8
         while counter > 0:
             codel = self.get_codel(self.pointerLocation)
-            self.print_codel(codel)
+            if self.debug:
+                self.print_codel(codel)
             next_edge = self.get_next_edge(self.pointerLocation, codel)
             tst_dir = self.get_test_direction(self.DP)
             if(not next_edge or
@@ -270,17 +301,28 @@ class pietInterpreter(object):
                     self.CC = not self.CC
                 else:
                     self.pointer_toggle()
-                print('CC: ' + str(self.CC))
-                print('DP: ' + str(self.DP))
+                if self.debug:
+                    print('CC: ' + str(self.CC))
+                    print('DP: ' + str(self.DP))
                 counter -= 1
                 continue
             next_coord = [next_edge[0] + tst_dir[0], next_edge[1] + tst_dir[1]]
             change = self.get_change(self.get_color(self.pointerLocation), self.get_color(next_coord))
-            fun = self.functions[change[0]][change[1]]
-            # execute the given function here
-            print(self.get_color(next_coord))
-            print(next_coord)
-            print(counter)
+            # fun = self.functions[change[0]][change[1]]
+            funName = self.function_names[change[0]][change[1]]
+            self.process_function(change, len(codel))
+            """
+            if funName == 'push':
+                fun(len(codel))
+                print('pushing to stack')
+                print(len(codel))
+            else:
+                fun()
+            if self.debug:
+                print(self.get_color(next_coord))
+                print(next_coord)
+                print(counter)
+            """
             self.pointerLocation = next_coord
             counter = 8
 

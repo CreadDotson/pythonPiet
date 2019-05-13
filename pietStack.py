@@ -90,6 +90,7 @@ class pietStack(object):
         self.memory.push(num)
 
     def roll(self):
+        # print(self.memory)
         first = self.memory.pop()
         second = self.memory.pop()
         tempStack = Stack()
@@ -107,3 +108,5 @@ class pietStack(object):
 
     def output(self):
         print(self.memory.pop())
+        ##print(chr(self.memory.pop()))
+        ##print(str(self.memory.pop()))
